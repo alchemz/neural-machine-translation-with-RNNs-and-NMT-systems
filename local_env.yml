@@ -1,4 +1,4 @@
-name: local_nmt
+name: cs224n_local_nmt
 channels:
   - pytorch
   - defaults

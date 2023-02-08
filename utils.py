@@ -22,7 +22,7 @@ import sentencepiece as spm
 nltk.download('punkt')
 
 
-def pad_sents(sents, pad_token):
+def pad_sents(sents :List[List[str]], pad_token: str) -> List[List[str]]:
     """ Pad list of sentences according to the longest sentence in the batch.
         The paddings should be at the end of each sentence.
     @param sents (list[list[str]]): list of sentences, where each sentence
@@ -35,7 +35,10 @@ def pad_sents(sents, pad_token):
     sents_padded = []
 
     ### YOUR CODE HERE (~6 Lines)
-
+    pad = [pad_token]
+    lengths = [len(sent) for sent in sents]
+    max_length = max(lengths)
+    sents_padded = [sent + (max_length-lengths[i]) * pad for i, sent in enumerate(sents)]
 
     ### END YOUR CODE
 
