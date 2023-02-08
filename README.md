@@ -1,1 +1,4 @@
-# neural-machine-translation-with-RNNs-and-NMT-systems
+# Analyzing NMT
+Note: Heavily inspired by the https://github.com/pcyin/pytorch_basic_nmt repository
+
+
