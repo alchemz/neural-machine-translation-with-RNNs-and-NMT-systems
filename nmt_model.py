@@ -84,11 +84,11 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/generated/torch.nn.Conv1d.html
 
         # Initialize post_embed_cnn
-        self.post_embed_cnn = nn.Conv1d(embed_size, embed_size, 2, padding="same")
+        self.post_embed_cnn = nn.Conv1d(in_channels=embed_size, out_channels=embed_size, kernel_size=2, padding='same')
         # Initialize encoder
-        self.encoder = nn.LSTM(embed_size, hidden_size, bidirectional=True)
+        self.encoder = nn.LSTM(input_size=embed_size, hidden_size=hidden_size, num_layers=1, bias=True, bidirectional=True)
         # Initialize decoder
-        self.decoder = nn.LSTMCell(embed_size+hidden_size, hidden_size)
+        self.decoder = nn.LSTMCell(input_size=hidden_size+embed_size, hidden_size=hidden_size, bias=True)
         # Initialize h_projection
         self.h_projection = nn.Linear(2*hidden_size, hidden_size, bias=False)
         # Initialize c_projection
@@ -99,6 +99,7 @@ class NMT(nn.Module):
         self.combined_output_projection = nn.Linear(3*hidden_size, hidden_size, bias=False)
         # Initialize target_vocab_projection
         self.target_vocab_projection = nn.Linear(hidden_size, len(vocab.tgt), bias=False)
+
         self.dropout = nn.Dropout(p=dropout_rate)
 
         ### END YOUR CODE
@@ -198,15 +199,15 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/generated/torch.Tensor.reshape.html
 
         # 1. Construct Tensor `X` of source sentences with shape (src_len, b, e) using the source model embeddings.
-        src_emb = self.model_embeddings.source(source_padded)
-        src_emb = torch.permute(src_emb, (1, 2, 0))
+        X = self.model_embeddings.source(source_padded)
+        X = torch.permute(X, (1, 2, 0))
     
         # 2. Apply the post_embed_cnn layer.
-        src_emb = self.post_embed_cnn(src_emb)
-        src_emb = torch.permute(src_emb, (2, 0, 1))
+        X = self.post_embed_cnn(X)
+        X = torch.permute(X, (2, 0, 1))
         
         # 3. Compute `enc_hiddens`, `last_hidden`, `last_cell` by applying the encoder to `X`.
-        enc_hiddens, (last_hidden, last_cell) = self.encoder(pack_padded_sequence(src_emb, source_lengths))
+        enc_hiddens, (last_hidden, last_cell) = self.encoder(pack_padded_sequence(X, source_lengths))
         enc_hiddens, unpacked_lengths = pad_packed_sequence(enc_hiddens)
         enc_hiddens = torch.permute(enc_hiddens, (1,0,2))
         last_hidden = torch.cat((last_hidden[1], last_hidden[0]),1)
@@ -350,11 +351,10 @@ class NMT(nn.Module):
         ###     Tensor Squeeze:
         ###         https://pytorch.org/docs/stable/torch.html#torch.squeeze
 
-        dec_state = self.decoder(Ybar_t, dec_state) 
-        dec_hidden, dec_cell = dec_state
+        dec_state = self.decoder(Ybar_t, (dec_state[0], dec_state[1]))
+        dec_hidden, dec_cell = dec_state[0], dec_state[1]
         enc_hiddens_proj = enc_hiddens_proj.transpose(2, 1) 
-        e_t = torch.bmm(dec_hidden.unsqueeze(-2), 
-                        enc_hiddens_proj).squeeze(-2) 
+        e_t = torch.bmm(enc_hiddens_proj, torch.unsqueeze(dec_hidden, 2)).squeeze(2)
         ### END YOUR CODE
 
         # Set e_t to -inf where enc_masks has 1
